@@ -1,0 +1,140 @@
+<head>
+    <link rel="stylesheet" href="/supportAgentTicketViewer.css">
+</head>
+<body>
+    <h1>Ticket Viewer</h1>
+    <input type="text" id="open-tickets-search" placeholder="Search Tickets">
+
+    <h2>Open Tickets</h2>
+    <ul id="open-tickets"></ul>
+
+    <h2>Closed Tickets</h2>
+    <ul id="closed-tickets"></ul>
+
+    <script>
+        const userId = '<%= user.id %>';
+
+        async function fetchTickets() {
+            try {
+                const res = await fetch('/ticket', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (!res.ok) {
+                    throw new Error('Failed to fetch tickets');
+                }
+                const data = await res.json();
+                return data.tickets;
+                console.log(data.tickets);
+            } catch (err) {
+                console.error('Error fetching tickets: ', err);
+                return [];
+            }
+        }
+
+        
+
+        async function fetchTicketsAndUsers() {
+            const tickets = await fetchTickets();
+
+            const openTicketsList = document.getElementById('open-tickets');
+            const pendingTicketsList = document.getElementById('pending-tickets');
+            const closedTicketsList = document.getElementById('closed-tickets');
+
+            for (const ticket of tickets) {
+
+                const listItem = document.createElement('li');
+                
+                // TITLE
+                const title = document.createElement('span');
+                title.textContent = `Title: ${ticket.title} `;
+                listItem.appendChild(title);
+                
+                // DESCRIPTION
+                const description = document.createElement('span');
+                description.textContent = `Description: ${ticket.description} `;
+                listItem.appendChild(description);
+                
+                // STATUS
+                const statusLabel = document.createElement('span');
+                statusLabel.textContent = 'Status: ';
+                listItem.appendChild(statusLabel);
+                
+                const status = document.createElement('select');
+                ['open', 'pending', 'closed'].forEach(optionValue => {
+                    const option = document.createElement('option');
+                    option.value = optionValue;
+                    option.textContent = optionValue;
+                    if (ticket.status === optionValue) {
+                        option.selected = true;
+                    }
+                    status.appendChild(option);
+                });
+                status.disabled = true; // Disable editing
+                listItem.appendChild(status);
+                
+                // ASSIGNED TO
+                const assignedToLabel = document.createElement('span');
+                assignedToLabel.textContent = 'Assigned To: ';
+                listItem.appendChild(assignedToLabel);
+                const assignedTo = document.createElement('input');
+                assignedTo.type = 'text';
+                assignedTo.value = '<%- user.username %>';
+                assignedTo.disabled = true; // Disable editing
+                listItem.appendChild(assignedTo);
+                
+                // CREATED AT
+                const createdAt = document.createElement('span');
+                createdAt.textContent = `Created At: ${new Date(ticket.created_at).toLocaleString()} `;
+                listItem.appendChild(createdAt);
+                //ticketList.appendChild(listItem);
+
+                // COMPLETE TICKET BUTTON
+                if (ticket.status === 'open') {
+                    const changeButton = document.createElement('button');
+                    changeButton.textContent = 'Complete Ticket';
+                    changeButton.onclick = async () => {
+                        try {
+                            const res = await fetch(`/supportAgent/ticket`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    ticketId: ticket._id,
+                                    lastUpdatedBy: userId
+                                })
+                            })
+                            if (!res.ok) {
+                                throw new Error('Failed to update ticket');
+                            }
+                            alert('Ticket updated successfully');
+
+                            // Remove the list item from its current list
+                            listItem.remove();
+                            document.getElementById('closed-tickets').appendChild(listItem);
+                            changeButton.remove();
+                            const statusElement = listItem.querySelector('select');
+                            if (statusElement) {
+                                statusElement.value = 'closed';
+                            }
+                        } catch (err) {
+                            console.error('Error updating ticket: ', err);
+                        }
+                    }
+                    listItem.appendChild(changeButton);
+                }
+                
+                // ADD TO APPROPRIATE LIST
+                
+                if (ticket.status === 'open') {
+                    openTicketsList.appendChild(listItem);
+                } else if (ticket.status === 'closed') {
+                    closedTicketsList.appendChild(listItem);
+                }
+                    
+
+            }
+        }
+        fetchTicketsAndUsers();
+    </script>
+</body>
+</html>

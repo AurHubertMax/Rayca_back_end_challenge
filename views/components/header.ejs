@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= user.username %></title>
+    <link rel="stylesheet" href="../public/header.css"> 
+</head>
+<style>
+</style>
+<body>
+    <div>
+        <header style="display: flex; justify-content: space-between; align-items: center; background-color: #333; color: #fff; padding: 20px;">
+            <div style="display: flex; flex-direction: column;">
+                <h1 style="margin: 0; font-size: 2.5em;"><%= user.username %></h1>
+                <h2 style="margin: 0; font-size: 1.5em; font-weight: 300; color: #ccc;"><%= user.role %></h2>
+            </div>
+            <nav>
+                <ul style="list-style: none; padding: 0; margin: 0; display: flex;">
+                    <li style="margin: 0 15px;"><a href="/logout" style="color: #fff; text-decoration: none; font-size: 1.2em;">Log Out</a></li>
+                </ul>
+            </nav>
+        </header>
+    </div>
+
+</body>
+
+</html>

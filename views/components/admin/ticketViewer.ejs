@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Viewer</title>
+    <link rel="stylesheet" href="/adminTicketViewer.css">
+</head>
+<body>
+    <input type="text" id="open-tickets-search" placeholder="Search Tickets">
+    <div>
+        <h2>Open Tickets</h2>
+        <ul id="open-tickets"></ul>
+
+        <h2>Pending Tickets</h2>
+        <ul id="pending-tickets"></ul>
+
+        <h2>Closed Tickets</h2>
+        <ul id="closed-tickets"></ul>
+    </div>
+    
+
+    <script>
+        const userId = '<%= user.id %>';
+        async function fetchUsers() {
+            try {
+                const res = await fetch('/admin/users', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (!res.ok) {
+                    throw new Error('Failed to fetch users');
+                }
+                const data = await res.json();
+                return data.users;
+            } catch (err) {
+                console.error('Error fetching users: ', err);
+                return [];
+            }
+        }
+
+        async function filterUsers(filterType, filterValue) {
+            const allUsers = await fetchUsers();
+            return allUsers.filter(user => user[filterType] === filterValue);
+        }
+
+        async function fetchTickets() {
+            try {
+                const res = await fetch('/ticket', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (!res.ok) {
+                    throw new Error('Failed to fetch tickets');
+                }
+                const data = await res.json();
+                return data.tickets;
+            } catch (err) {
+                console.error('Error fetching tickets: ', err);
+                return [];
+            }
+        }
+
+        
+
+        async function fetchTicketsAndUsers() {
+            const supportAgents = await filterUsers('role', 'support agent');
+            const tickets = await fetchTickets();
+
+            const openTicketsList = document.getElementById('open-tickets');
+            const pendingTicketsList = document.getElementById('pending-tickets');
+            const closedTicketsList = document.getElementById('closed-tickets');
+
+            for (const ticket of tickets) {
+                const lastUpdatedByArray = await filterUsers('_id', `${ticket.last_updated_by}`);
+                const lastUpdatedByUsername = lastUpdatedByArray[0].username;
+
+                const listItem = document.createElement('li');
+                
+                // TITLE
+                const title = document.createElement('span');
+                title.textContent = `Title: ${ticket.title} `;
+                listItem.appendChild(title);
+                
+                // DESCRIPTION
+                const description = document.createElement('span');
+                description.textContent = `Description: ${ticket.description} `;
+                listItem.appendChild(description);
+                
+                // STATUS
+                const statusLabel = document.createElement('span');
+                statusLabel.textContent = 'Status: ';
+                listItem.appendChild(statusLabel);
+                
+                const status = document.createElement('select');
+                ['open', 'pending', 'closed'].forEach(optionValue => {
+                    const option = document.createElement('option');
+                    option.value = optionValue;
+                    option.textContent = optionValue;
+                    if (ticket.status === optionValue) {
+                        option.selected = true;
+                    }
+                    status.appendChild(option);
+                });
+                listItem.appendChild(status);
+                
+                // ASSIGNED TO
+                const assignedToLabel = document.createElement('span');
+                assignedToLabel.textContent = 'Assigned To: ';
+                listItem.appendChild(assignedToLabel);
+                
+                const defaultOption = document.createElement('option');
+                const assignedTo = document.createElement('select');
+                defaultOption.value = '';
+                defaultOption.textContent = 'None';
+                assignedTo.appendChild(defaultOption);
+                supportAgents.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user._id;
+                    option.textContent = user.username;
+                    if (ticket.assigned_to === user._id) {
+                        option.selected = true;
+                    }
+                    assignedTo.appendChild(option);
+                });
+                if (!ticket.assigned_to) {
+                    defaultOption.selected = true;
+                }
+                listItem.appendChild(assignedTo);
+                
+                // LAST UPDATED BY
+                const lastUpdatedByLabel = document.createElement('span');
+                lastUpdatedByLabel.textContent = 'Last Updated By: ';
+                listItem.appendChild(lastUpdatedByLabel);
+                const lastUpdatedBy = document.createElement('input');
+                lastUpdatedBy.type = 'text';
+                lastUpdatedBy.value = lastUpdatedByUsername;
+                lastUpdatedBy.disabled = true; 
+                listItem.appendChild(lastUpdatedBy);
+
+                // CREATED AT
+                const createdAt = document.createElement('span');
+                createdAt.textContent = `Created At: ${new Date(ticket.created_at).toLocaleString()} `;
+                listItem.appendChild(createdAt);
+                //ticketList.appendChild(listItem);
+
+                // MAKE CHANGES BUTTON
+                const changeButton = document.createElement('button');
+                changeButton.textContent = 'Make Changes';
+                console.log('assigned to: ',assignedTo.value);
+                changeButton.onclick = async () => {
+                    try {
+                        const res = await fetch(`/admin/ticket`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                ticketId: ticket._id,
+                                status: status.value,
+                                assignedTo: assignedTo.value,
+                                lastUpdatedBy: userId
+
+                            })
+                        })
+                        if (!res.ok) {
+                            throw new Error('Failed to update ticket');
+                        }
+                        alert('Ticket updated successfully');
+                        // Update the ticket status
+                        ticket.status = status.value;
+
+                        // Remove the list item from its current list
+                        listItem.remove();
+                        if (ticket.status === 'open') {
+                            document.getElementById('open-tickets').appendChild(listItem);
+                        } else if (ticket.status === 'pending') {
+                            document.getElementById('pending-tickets').appendChild(listItem);
+                        } else if (ticket.status === 'closed') {
+                            document.getElementById('closed-tickets').appendChild(listItem);
+                        }
+                    } catch (err) {
+                        console.error('Error updating ticket: ', err);
+                    }
+                }
+                listItem.appendChild(changeButton);
+
+                // DELETE BUTTON
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = async () => {
+                    try {
+                        const res = await fetch(`/admin/ticket`, {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                ticketId: ticket._id   
+                            })
+                        })
+                        if (!res.ok) {
+                            throw new Error('Failed to delete ticket');
+                        }
+                        alert('Ticket deleted successfully');
+                        listItem.remove();
+                    } catch (err) {
+                        console.error('Error deleting ticket: ', err);
+                    }
+                }
+                listItem.appendChild(deleteButton);
+
+                // ADD TO APPROPRIATE LIST
+                
+                if (ticket.status === 'open') {
+                    openTicketsList.appendChild(listItem);
+                } else if (ticket.status === 'pending') {
+                    pendingTicketsList.appendChild(listItem);
+                } else if (ticket.status === 'closed') {
+                    closedTicketsList.appendChild(listItem);
+                }
+                    
+
+            }
+        }
+        function filterTickets(searchInputId) {
+            const searchInput = document.getElementById(searchInputId);
+            const lists = [
+                document.getElementById('open-tickets'),
+                document.getElementById('pending-tickets'),
+                document.getElementById('closed-tickets')
+            ];
+
+            searchInput.addEventListener('input', function() {
+                const filter = searchInput.value.toLowerCase();
+                lists.forEach(list => {
+                    const items = list.getElementsByTagName('li');
+                    for (let i = 0; i < items.length; i++) {
+                        const item = items[i];
+                        const text = item.textContent || item.innerText;
+                        if (text.toLowerCase().indexOf(filter) > -1) {
+                            item.style.display = '';
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    }
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchTicketsAndUsers();
+            filterTickets('open-tickets-search');
+            filterTickets('pending-tickets-search');
+            filterTickets('closed-tickets-search');
+        });
+    </script>
+</body>
+</html>

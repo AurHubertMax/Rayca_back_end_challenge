@@ -1,0 +1,55 @@
+
+<head>
+    <link rel="stylesheet" href="/customerTicketViewer.css">
+</head>
+<body>
+    <h2>Open Tickets</h2>
+    <ul id="open-tickets"></ul>
+
+    <h2>Pending Tickets</h2>
+    <ul id="pending-tickets"></ul>
+
+    <h2>Closed Tickets</h2>
+    <ul id="closed-tickets"></ul>
+</body>
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+
+        const fetchTickets = async () => {
+            try {
+                const res = await fetch('/ticket', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!res.ok) {
+                    throw new Error('Failed to fetch tickets');
+                }
+                const data = await res.json();
+                console.log(data);
+
+                const openTicketsList = document.getElementById('open-tickets');
+                const pendingTicketsList = document.getElementById('pending-tickets');
+                const closedTicketsList = document.getElementById('closed-tickets');
+
+                data.tickets.forEach(ticket => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `Title: ${ticket.title} Description: ${ticket.description} Status: ${ticket.status}`;
+
+                    // Append the ticket to the appropriate list based on its status
+                    if (ticket.status === 'open') {
+                        openTicketsList.appendChild(listItem);
+                    } else if (ticket.status === 'pending') {
+                        pendingTicketsList.appendChild(listItem);
+                    } else if (ticket.status === 'closed') {
+                        closedTicketsList.appendChild(listItem);
+                    }
+                });
+            } catch (error) {
+                console.log(error);
+            }
+        };
+
+        await fetchTickets();
+    });
+</script>

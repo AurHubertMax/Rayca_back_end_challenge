@@ -1,0 +1,54 @@
+<h1 style="text-align: left;">Create a ticket</h1>
+<head>
+    <link rel="stylesheet" href="/createTicket.css">
+</head>
+<form id="createTicketForm">
+    <label for="title">Title:</label>
+    <input type="text" id="title" name="title" required>
+
+    <label for="description">Description:</label>
+    <textarea id="description" name="description" required></textarea>
+
+    <button type="submit">Create Ticket</button>
+</form>
+
+<script>
+    const createTicketForm = document.getElementById('createTicketForm');
+    const uid = "<%= user._id %>";
+    const init_status = 'pending';
+    const init_created_by = "<%= user._username %> (<%= user.role %>)";
+    const init_assigned_to = 'N/A';
+    const init_last_updated_by = "<%= user.username %>";
+
+    createTicketForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const title = createTicketForm.title.value;
+        const description = createTicketForm.description.value;
+        const status = init_status;
+        const customer_id = uid;
+
+        try {
+            const res = await fetch('/ticket', {
+                method: 'POST',
+                body: JSON.stringify({ title, description, status, customer_id }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await res.json();
+            console.log(data);
+
+            if (data.errors) {
+                alert(data.errors);
+            }
+
+            if (data.ticket) {
+                alert('Ticket created successfully');
+                createTicketForm.reset();
+                window.location.reload();
+            }
+        } catch (error) {
+            console.log(error);
+        }
+    });
+</script>
